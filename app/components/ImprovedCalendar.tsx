@@ -2,6 +2,7 @@
 
 import { Event, CITIES, SCHEDULE, EventType } from '../types';
 import { formatTime, formatDate } from '../utils';
+import { mixColors } from '../utils/colorUtils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -103,9 +104,13 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
                 >
                   {/* Date cell */}
                   <div 
-                    className="w-32 flex-shrink-0 p-3 sticky left-0 z-10 border-r-2 border-gray-200"
+                    className="w-32 flex-shrink-0 p-3 sticky left-0 z-10 border-r-2"
                     style={{ 
-                      background: `linear-gradient(135deg, ${cityColor}15 0%, ${cityColor}05 100%)`,
+                      background: (() => {
+                        const baseColor = dateIdx % 2 === 0 ? '#ffffff' : '#fafafa';
+                        const lightTintedColor = mixColors(baseColor, cityColor, 0.05);
+                        return lightTintedColor
+                      })(),
                       borderRightColor: cityColor
                     }}
                   >
