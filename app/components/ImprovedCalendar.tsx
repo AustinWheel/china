@@ -26,7 +26,7 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
     // Always show 8AM-11PM, plus any early morning hours with events
     const hours: number[] = [];
     for (let h = 0; h < 24; h++) {
-      if (h >= 8 || hoursWithEvents.has(h)) {
+      if ((h >= 8 && h <= 23) || hoursWithEvents.has(h)) {
         hours.push(h);
       }
     }
@@ -65,18 +65,21 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
   return (
     <Card className="w-full overflow-hidden shadow-lg">
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <div className="min-w-[1000px]">
+        <div className="overflow-x-auto relative">
+          <div className="min-w-max">
             {/* Header with hours */}
             <div className="flex sticky top-0 bg-white z-20 border-b-2 border-gray-200">
-              <div className="w-32 flex-shrink-0 p-3 font-semibold bg-gray-50 border-r-2 border-gray-200">
+              <div className="w-32 flex-shrink-0 p-3 font-semibold bg-gray-50 border-r-2 border-gray-200 sticky left-0 z-30">
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="w-4 h-4 text-gray-600" />
                   <span className="text-sm">Date / Time</span>
                 </div>
               </div>
-              {activeHours.map(hour => (
-                <div key={hour} className="flex-1 min-w-[80px] p-3 text-center text-sm font-medium border-r border-gray-100">
+              {activeHours.map((hour, idx) => (
+                <div key={hour} className={cn(
+                  "flex-1 min-w-[80px] p-3 text-center text-sm font-medium border-r border-gray-100",
+                  idx === activeHours.length - 1 && "pr-6"
+                )}>
                   <div className="text-gray-900">
                     {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
                   </div>
@@ -94,7 +97,7 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
                 <div 
                   key={date} 
                   className={cn(
-                    "flex border-b border-gray-100",
+                    "flex border-b border-gray-200",
                     dateIdx % 2 === 0 ? "bg-white" : "bg-gray-50/50"
                   )}
                 >
@@ -121,13 +124,16 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
                   </div>
                   
                   {/* Hour cells */}
-                  {activeHours.map(hour => {
+                  {activeHours.map((hour, idx) => {
                     const hourEvents = getEventsForDateTime(date, hour);
                     
                     return (
                       <div 
                         key={`${date}-${hour}`} 
-                        className="flex-1 min-w-[80px] p-1 border-r border-gray-100 min-h-[80px] relative"
+                        className={cn(
+                          "flex-1 min-w-[80px] p-1 border-r border-gray-100 min-h-[80px] relative",
+                          idx === activeHours.length - 1 && "pr-4 border-r-0"
+                        )}
                       >
                         <div className="space-y-1">
                           {hourEvents.map((event, idx) => (

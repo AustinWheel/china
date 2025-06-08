@@ -62,44 +62,48 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-full px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-6 w-6 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">China Trip 2025</h1>
-              <Badge variant="secondary" className="ml-2">
+        <div className="max-w-full px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Calendar className="h-5 sm:h-6 w-5 sm:w-6 text-blue-600" />
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">China Trip 2025</h1>
+              <Badge variant="secondary" className="ml-2 text-xs sm:text-sm">
                 July 5 - 21
               </Badge>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <Button
                 onClick={() => setShowAddEvent(true)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-sm sm:text-base"
+                size="sm"
               >
                 <Plus className="h-4 w-4" />
-                Add Event
+                <span className="hidden sm:inline">Add Event</span>
+                <span className="sm:hidden">Add</span>
               </Button>
               <Button
                 onClick={handleShareLink}
                 variant="outline"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-sm sm:text-base"
+                size="sm"
               >
                 <Share2 className="h-4 w-4" />
-                Share Link
+                <span className="hidden sm:inline">Share Link</span>
+                <span className="sm:hidden">Share</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="p-6">
+      <main className="p-4 sm:p-6">
         <ImprovedCalendar 
           events={allEvents}
           onEventClick={setSelectedEvent}
         />
         
         {/* Event count summary */}
-        <div className="mt-6 flex gap-4 justify-center">
+        <div className="mt-6 flex flex-wrap gap-2 sm:gap-4 justify-center">
           <Badge variant="outline" className="px-3 py-1">
             🍜 Food: {allEvents.filter(e => e.type === 'food').length}
           </Badge>
