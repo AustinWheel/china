@@ -78,7 +78,7 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
               </div>
               {activeHours.map((hour, idx) => (
                 <div key={hour} className={cn(
-                  "flex-1 min-w-[80px] p-3 text-center text-sm font-medium border-r border-gray-100",
+                  "flex-1 min-w-[140px] p-3 text-center text-sm font-medium border-r border-gray-100",
                   idx === activeHours.length - 1 && "pr-6"
                 )}>
                   <div className="text-gray-900">
@@ -136,7 +136,7 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
                       <div 
                         key={`${date}-${hour}`} 
                         className={cn(
-                          "flex-1 min-w-[80px] p-1 border-r border-gray-100 min-h-[80px] relative",
+                          "flex-1 min-w-[140px] p-1 border-r border-gray-100 min-h-[80px] relative",
                           idx === activeHours.length - 1 && "pr-4 border-r-0"
                         )}
                       >
