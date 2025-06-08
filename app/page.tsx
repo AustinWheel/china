@@ -1,122 +1,108 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ImprovedCalendar from './components/ImprovedCalendar';
-import { Event, HARDCODED_EVENTS, EventType } from './types';
-import { encodeEventsToURL, decodeEventsFromURL, formatTime } from './utils';
+import { Event, EventType } from './types';
+import { formatTime } from './utils';
+import { useEvents, useCreateEvent, useDeleteEvent } from './hooks/useEvents';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
-import { Plus, Share2, Calendar, MapPin, Clock, Trash2 } from 'lucide-react';
+import { Plus, Calendar, MapPin, Clock, Trash2, Loader2 } from 'lucide-react';
 
 export default function Home() {
-  const [dynamicEvents, setDynamicEvents] = useState<Event[]>([]);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  
+  const { data: events = [], isLoading, error } = useEvents();
+  const createEventMutation = useCreateEvent();
+  const deleteEventMutation = useDeleteEvent();
 
-  // Load events from URL on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const eventsParam = params.get('events');
-    if (eventsParam) {
-      const decoded = decodeEventsFromURL(eventsParam);
-      setDynamicEvents(decoded);
+  const handleAddEvent = async (event: Omit<Event, 'id'>) => {
+    try {
+      await createEventMutation.mutateAsync(event);
+      setShowAddEvent(false);
+    } catch (error) {
+      console.error('Failed to add event:', error);
     }
-  }, []);
+  };
 
-  // Update URL when dynamic events change
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (dynamicEvents.length > 0) {
-      params.set('events', encodeEventsToURL(dynamicEvents));
-    } else {
-      params.delete('events');
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      await deleteEventMutation.mutateAsync(eventId);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error('Failed to delete event:', error);
     }
-    const newURL = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
-    window.history.replaceState({}, '', newURL);
-  }, [dynamicEvents]);
-
-  const allEvents = [...HARDCODED_EVENTS, ...dynamicEvents];
-
-  const handleAddEvent = (event: Omit<Event, 'id'>) => {
-    const newEvent: Event = {
-      ...event,
-      id: `dyn-${Date.now()}`
-    };
-    setDynamicEvents([...dynamicEvents, newEvent]);
-    setShowAddEvent(false);
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    setDynamicEvents(dynamicEvents.filter(e => e.id !== eventId));
-    setSelectedEvent(null);
-  };
-
-  const handleShareLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    alert('Link copied to clipboard! Share it with others to show your itinerary.');
-  };
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-6">
+          <p className="text-red-600">Failed to load events. Please try again later.</p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-full px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Calendar className="h-5 sm:h-6 w-5 sm:w-6 text-blue-600" />
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">China Trip 2025</h1>
-              <Badge variant="secondary" className="ml-2 text-xs sm:text-sm">
+        <div className="max-w-full px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-6 w-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">China Trip 2025</h1>
+              <Badge variant="secondary" className="ml-2">
                 July 5 - 21
               </Badge>
             </div>
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex gap-3">
               <Button
                 onClick={() => setShowAddEvent(true)}
-                className="flex items-center gap-2 text-sm sm:text-base"
-                size="sm"
+                className="flex items-center gap-2"
+                disabled={createEventMutation.isPending}
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Event</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-              <Button
-                onClick={handleShareLink}
-                variant="outline"
-                className="flex items-center gap-2 text-sm sm:text-base"
-                size="sm"
-              >
-                <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Share Link</span>
-                <span className="sm:hidden">Share</span>
+                Add Event
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="p-4 sm:p-6">
-        <ImprovedCalendar 
-          events={allEvents}
-          onEventClick={setSelectedEvent}
-        />
-        
-        {/* Event count summary */}
-        <div className="mt-6 flex flex-wrap gap-2 sm:gap-4 justify-center">
-          <Badge variant="outline" className="px-3 py-1">
-            🍜 Food: {allEvents.filter(e => e.type === 'food').length}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            🎯 Activities: {allEvents.filter(e => e.type === 'activity').length}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            ✈️ Transport: {allEvents.filter(e => e.type === 'transport').length}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            🏨 Accommodation: {allEvents.filter(e => e.type === 'accommodation').length}
-          </Badge>
-        </div>
+      <main className="p-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        ) : (
+          <>
+            <ImprovedCalendar 
+              events={events}
+              onEventClick={setSelectedEvent}
+            />
+            
+            {/* Event count summary */}
+            <div className="mt-6 flex gap-4 justify-center flex-wrap">
+              <Badge variant="outline" className="px-3 py-1">
+                🍜 Food: {events.filter(e => e.type === 'food').length}
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1">
+                🎯 Activities: {events.filter(e => e.type === 'activity').length}
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1">
+                ✈️ Transport: {events.filter(e => e.type === 'transport').length}
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1">
+                🏨 Accommodation: {events.filter(e => e.type === 'accommodation').length}
+              </Badge>
+            </div>
+          </>
+        )}
       </main>
 
       {/* Add Event Modal */}
@@ -124,6 +110,7 @@ export default function Home() {
         <AddEventModal
           onClose={() => setShowAddEvent(false)}
           onAdd={handleAddEvent}
+          isLoading={createEventMutation.isPending}
         />
       </Dialog>
 
@@ -133,7 +120,8 @@ export default function Home() {
           <EventDetailsModal
             event={selectedEvent}
             onClose={() => setSelectedEvent(null)}
-            onDelete={selectedEvent.id.startsWith('dyn-') ? handleDeleteEvent : undefined}
+            onDelete={handleDeleteEvent}
+            isDeleting={deleteEventMutation.isPending}
           />
         )}
       </Dialog>
@@ -144,9 +132,10 @@ export default function Home() {
 interface AddEventModalProps {
   onClose: () => void;
   onAdd: (event: Omit<Event, 'id'>) => void;
+  isLoading: boolean;
 }
 
-function AddEventModal({ onClose, onAdd }: AddEventModalProps) {
+function AddEventModal({ onClose, onAdd, isLoading }: AddEventModalProps) {
   const [formData, setFormData] = useState({
     date: '2025-07-05',
     time: '12:00',
@@ -191,6 +180,7 @@ function AddEventModal({ onClose, onAdd }: AddEventModalProps) {
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
+            disabled={isLoading}
           />
         </div>
         
@@ -202,6 +192,7 @@ function AddEventModal({ onClose, onAdd }: AddEventModalProps) {
             onChange={(e) => setFormData({ ...formData, time: e.target.value })}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
+            disabled={isLoading}
           />
         </div>
         
@@ -210,6 +201,7 @@ function AddEventModal({ onClose, onAdd }: AddEventModalProps) {
           <Select
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value as EventType })}
+            disabled={isLoading}
           >
             <option value="food">{getEventTypeIcon('food')} Food</option>
             <option value="activity">{getEventTypeIcon('activity')} Activity</option>
@@ -228,6 +220,7 @@ function AddEventModal({ onClose, onAdd }: AddEventModalProps) {
             placeholder="Enter event title"
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
+            disabled={isLoading}
           />
         </div>
         
@@ -239,14 +232,22 @@ function AddEventModal({ onClose, onAdd }: AddEventModalProps) {
             placeholder="Add any additional details"
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={3}
+            disabled={isLoading}
           />
         </div>
         
         <div className="flex gap-3 pt-4">
-          <Button type="submit" className="flex-1">
-            Add Event
+          <Button type="submit" className="flex-1" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              'Add Event'
+            )}
           </Button>
-          <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+          <Button type="button" variant="outline" onClick={onClose} className="flex-1" disabled={isLoading}>
             Cancel
           </Button>
         </div>
@@ -258,10 +259,11 @@ function AddEventModal({ onClose, onAdd }: AddEventModalProps) {
 interface EventDetailsModalProps {
   event: Event;
   onClose: () => void;
-  onDelete?: (eventId: string) => void;
+  onDelete: (eventId: string) => void;
+  isDeleting: boolean;
 }
 
-function EventDetailsModal({ event, onClose, onDelete }: EventDetailsModalProps) {
+function EventDetailsModal({ event, onClose, onDelete, isDeleting }: EventDetailsModalProps) {
   const getEventTypeIcon = (type: EventType) => {
     switch (type) {
       case 'food': return '🍜';
@@ -326,17 +328,25 @@ function EventDetailsModal({ event, onClose, onDelete }: EventDetailsModalProps)
         )}
         
         <div className="flex gap-3 pt-4">
-          {onDelete && (
-            <Button 
-              onClick={() => onDelete(event.id)} 
-              variant="destructive"
-              className="flex items-center gap-2 flex-1"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete Event
-            </Button>
-          )}
-          <Button onClick={onClose} variant="outline" className={onDelete ? 'flex-1' : 'w-full'}>
+          <Button 
+            onClick={() => onDelete(event.id)} 
+            variant="destructive"
+            className="flex items-center gap-2 flex-1"
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4" />
+                Delete Event
+              </>
+            )}
+          </Button>
+          <Button onClick={onClose} variant="outline" className="flex-1" disabled={isDeleting}>
             Close
           </Button>
         </div>
