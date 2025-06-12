@@ -2,30 +2,63 @@
 
 import { useState } from 'react';
 import ImprovedCalendar from './components/ImprovedCalendar';
+import EventBuffer from './components/EventBuffer';
+import TripNotesDialog from './components/TripNotes';
 import { Event, EventType } from './types';
 import { formatTime } from './utils';
-import { useEvents, useCreateEvent, useDeleteEvent } from './hooks/useEvents';
+import { useEvents, useCreateEvent, useDeleteEvent, useUpdateEvent } from './hooks/useEvents';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
-import { Plus, Calendar, MapPin, Clock, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Calendar, MapPin, Clock, Trash2, Loader2, Archive, CalendarPlus, FileText } from 'lucide-react';
 
 export default function Home() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [showTripNotes, setShowTripNotes] = useState(false);
   
   const { data: events = [], isLoading, error } = useEvents();
   const createEventMutation = useCreateEvent();
   const deleteEventMutation = useDeleteEvent();
+  const updateEventMutation = useUpdateEvent();
 
   const handleAddEvent = async (event: Omit<Event, 'id'>) => {
     try {
-      await createEventMutation.mutateAsync(event);
+      await createEventMutation.mutateAsync({ ...event, isBuffered: true });
       setShowAddEvent(false);
     } catch (error) {
       console.error('Failed to add event:', error);
+    }
+  };
+
+  const handleEventDrop = async (eventId: string, date: string, hour: number) => {
+    try {
+      const event = events.find(e => e.id === eventId);
+      if (event) {
+        await updateEventMutation.mutateAsync({
+          id: eventId,
+          updates: {
+            date,
+            time: `${hour.toString().padStart(2, '0')}:${event.time.split(':')[1]}`,
+            isBuffered: false
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to move event:', error);
+    }
+  };
+
+  const handleEventDropBack = async (eventId: string) => {
+    try {
+      await updateEventMutation.mutateAsync({
+        id: eventId,
+        updates: { isBuffered: true }
+      });
+    } catch (error) {
+      console.error('Failed to move event to buffer:', error);
     }
   };
 
@@ -49,7 +82,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col">
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-full px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -61,6 +94,14 @@ export default function Home() {
               </Badge>
             </div>
             <div className="flex gap-3">
+              <Button
+                onClick={() => setShowTripNotes(true)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Trip Notes
+              </Button>
               <Button
                 onClick={() => setShowAddEvent(true)}
                 className="flex items-center gap-2"
@@ -74,34 +115,49 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="p-6">
+      <main className="flex-1 p-6 min-h-0 overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           </div>
         ) : (
-          <>
-            <ImprovedCalendar 
-              events={events}
-              onEventClick={setSelectedEvent}
-            />
-            
-            {/* Event count summary */}
-            <div className="mt-6 flex gap-4 justify-center flex-wrap">
-              <Badge variant="outline" className="px-3 py-1">
-                🍜 Food: {events.filter(e => e.type === 'food').length}
-              </Badge>
-              <Badge variant="outline" className="px-3 py-1">
-                🎯 Activities: {events.filter(e => e.type === 'activity').length}
-              </Badge>
-              <Badge variant="outline" className="px-3 py-1">
-                ✈️ Transport: {events.filter(e => e.type === 'transport').length}
-              </Badge>
-              <Badge variant="outline" className="px-3 py-1">
-                🏨 Accommodation: {events.filter(e => e.type === 'accommodation').length}
-              </Badge>
+          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 h-full">
+            <div className="lg:h-full lg:overflow-auto">
+              <EventBuffer 
+                events={events}
+                onEventClick={setSelectedEvent}
+                onEventDropBack={handleEventDropBack}
+              />
             </div>
-          </>
+            <div className="flex flex-col h-full min-h-0 min-w-0">
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+                <ImprovedCalendar 
+                  events={events}
+                  onEventClick={setSelectedEvent}
+                  onEventDrop={handleEventDrop}
+                />
+              </div>
+              
+              {/* Event count summary */}
+              <div className="flex gap-4 justify-center flex-wrap pt-4 pb-2 flex-shrink-0">
+                <Badge variant="outline" className="px-3 py-1">
+                  📋 Unscheduled: {events.filter(e => e.isBuffered).length}
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1">
+                  🍜 Food: {events.filter(e => e.type === 'food' && !e.isBuffered).length}
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1">
+                  🎯 Activities: {events.filter(e => e.type === 'activity' && !e.isBuffered).length}
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1">
+                  ✈️ Transport: {events.filter(e => e.type === 'transport' && !e.isBuffered).length}
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1">
+                  🏨 Accommodation: {events.filter(e => e.type === 'accommodation' && !e.isBuffered).length}
+                </Badge>
+              </div>
+            </div>
+          </div>
         )}
       </main>
 
@@ -121,10 +177,20 @@ export default function Home() {
             event={selectedEvent}
             onClose={() => setSelectedEvent(null)}
             onDelete={handleDeleteEvent}
+            onUpdate={async (eventId, updates) => {
+              await updateEventMutation.mutateAsync({ id: eventId, updates });
+            }}
             isDeleting={deleteEventMutation.isPending}
+            isUpdating={updateEventMutation.isPending}
           />
         )}
       </Dialog>
+
+      {/* Trip Notes Dialog */}
+      <TripNotesDialog 
+        open={showTripNotes} 
+        onOpenChange={setShowTripNotes} 
+      />
     </div>
   );
 }
@@ -260,10 +326,15 @@ interface EventDetailsModalProps {
   event: Event;
   onClose: () => void;
   onDelete: (eventId: string) => void;
+  onUpdate: (eventId: string, updates: Partial<Event>) => void;
   isDeleting: boolean;
+  isUpdating: boolean;
 }
 
-function EventDetailsModal({ event, onClose, onDelete, isDeleting }: EventDetailsModalProps) {
+function EventDetailsModal({ event, onClose, onDelete, onUpdate, isDeleting, isUpdating }: EventDetailsModalProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDate, setEditDate] = useState(event.date);
+  const [editTime, setEditTime] = useState(event.time);
   const getEventTypeIcon = (type: EventType) => {
     switch (type) {
       case 'food': return '🍜';
@@ -327,7 +398,77 @@ function EventDetailsModal({ event, onClose, onDelete, isDeleting }: EventDetail
           </div>
         )}
         
-        <div className="flex gap-3 pt-4">
+        {/* Schedule/Buffer controls */}
+        <div className="border-t pt-4">
+          {event.isBuffered ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-gray-700">Schedule this event:</p>
+              <div className="space-y-2">
+                <input
+                  type="date"
+                  value={editDate}
+                  min="2025-07-05"
+                  max="2025-07-21"
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isUpdating}
+                />
+                <input
+                  type="time"
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isUpdating}
+                />
+              </div>
+              <Button
+                onClick={() => onUpdate(event.id, { 
+                  date: editDate, 
+                  time: editTime, 
+                  isBuffered: false 
+                })}
+                className="w-full flex items-center justify-center gap-2"
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Scheduling...
+                  </>
+                ) : (
+                  <>
+                    <CalendarPlus className="h-4 w-4" />
+                    Schedule Event
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">Event is scheduled</p>
+              <Button
+                onClick={() => onUpdate(event.id, { isBuffered: true })}
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2"
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Moving...
+                  </>
+                ) : (
+                  <>
+                    <Archive className="h-4 w-4" />
+                    Move to Buffer
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex gap-3 pt-2">
           <Button 
             onClick={() => onDelete(event.id)} 
             variant="destructive"

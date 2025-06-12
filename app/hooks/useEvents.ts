@@ -37,6 +37,22 @@ async function deleteEvent(id: string): Promise<void> {
   }
 }
 
+async function updateEvent(id: string, updates: Partial<Event>): Promise<Event> {
+  const response = await fetch(`/api/events/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updates),
+  })
+  
+  if (!response.ok) {
+    throw new Error('Failed to update event')
+  }
+  
+  return response.json()
+}
+
 export function useEvents() {
   return useQuery({
     queryKey: EVENTS_KEY,
@@ -60,6 +76,18 @@ export function useDeleteEvent() {
   
   return useMutation({
     mutationFn: deleteEvent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EVENTS_KEY })
+    },
+  })
+}
+
+export function useUpdateEvent() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Event> }) => 
+      updateEvent(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: EVENTS_KEY })
     },

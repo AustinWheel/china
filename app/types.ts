@@ -7,6 +7,7 @@ export interface Event {
   type: EventType;
   title: string;
   description?: string;
+  isBuffered?: boolean; // true if event is in buffer, false/undefined if scheduled
 }
 
 export interface City {

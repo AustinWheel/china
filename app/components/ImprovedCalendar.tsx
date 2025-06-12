@@ -11,9 +11,10 @@ import { Clock, MapPin, Calendar as CalendarIcon } from 'lucide-react';
 interface ImprovedCalendarProps {
   events: Event[];
   onEventClick?: (event: Event) => void;
+  onEventDrop?: (eventId: string, date: string, hour: number) => void;
 }
 
-export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalendarProps) {
+export default function ImprovedCalendar({ events, onEventClick, onEventDrop }: ImprovedCalendarProps) {
   const dates = Object.keys(SCHEDULE).sort();
   
   // Get all unique hours that have events
@@ -39,7 +40,7 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
   const getEventsForDateTime = (date: string, hour: number) => {
     return events.filter(event => {
       const eventHour = parseInt(event.time.split(':')[0]);
-      return event.date === date && eventHour === hour;
+      return event.date === date && eventHour === hour && !event.isBuffered;
     });
   };
 
@@ -64,10 +65,10 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
   };
 
   return (
-    <Card className="w-full overflow-hidden shadow-lg">
-      <CardContent className="p-0">
-        <div className="overflow-x-auto relative">
-          <div className="min-w-max">
+    <Card className="w-full h-full overflow-hidden shadow-lg flex flex-col">
+      <CardContent className="p-0 flex-1 flex flex-col min-h-0 min-w-0">
+        <div className="flex-1 overflow-auto relative min-w-0">
+          <div className="inline-block min-w-full">
             {/* Header with hours */}
             <div className="flex sticky top-0 bg-white z-20 border-b-2 border-gray-200">
               <div className="w-32 flex-shrink-0 p-3 font-semibold bg-gray-50 border-r-2 border-gray-200 sticky left-0 z-30">
@@ -92,7 +93,7 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
             {dates.map((date, dateIdx) => {
               const city = SCHEDULE[date];
               const cityColor = CITIES[city]?.color || '#6b7280';
-              const dayEvents = events.filter(e => e.date === date);
+              const dayEvents = events.filter(e => e.date === date && !e.isBuffered);
               
               return (
                 <div 
@@ -104,7 +105,7 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
                 >
                   {/* Date cell */}
                   <div 
-                    className="w-32 flex-shrink-0 p-3 sticky left-0 z-10 border-r-2"
+                    className="w-32 flex-shrink-0 p-3 sticky left-0 z-10 border-r-2 bg-inherit"
                     style={{ 
                       background: (() => {
                         const baseColor = dateIdx % 2 === 0 ? '#ffffff' : '#fafafa';
@@ -139,14 +140,34 @@ export default function ImprovedCalendar({ events, onEventClick }: ImprovedCalen
                           "flex-1 min-w-[140px] p-1 border-r border-gray-100 min-h-[80px] relative",
                           idx === activeHours.length - 1 && "pr-4 border-r-0"
                         )}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.add('bg-blue-50');
+                        }}
+                        onDragLeave={(e) => {
+                          e.currentTarget.classList.remove('bg-blue-50');
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove('bg-blue-50');
+                          const eventId = e.dataTransfer.getData('eventId');
+                          if (eventId && onEventDrop) {
+                            onEventDrop(eventId, date, hour);
+                          }
+                        }}
                       >
                         <div className="space-y-1">
                           {hourEvents.map((event, idx) => (
                             <div
                               key={event.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('eventId', event.id);
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
                               onClick={() => onEventClick?.(event)}
                               className={cn(
-                                "p-2 rounded-md text-xs cursor-pointer transition-all transform hover:scale-105 hover:shadow-md",
+                                "p-2 rounded-md text-xs cursor-move transition-all transform hover:scale-105 hover:shadow-md",
                                 getEventTypeColor(event.type)
                               )}
                             >

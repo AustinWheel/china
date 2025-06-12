@@ -21,4 +21,5 @@ model Event {
   type        String
   title       String
   description String?
+  isBuffered  Boolean  @default(true)
 }

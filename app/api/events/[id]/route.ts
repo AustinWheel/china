@@ -37,7 +37,8 @@ export async function PUT(
         time: body.time,
         type: body.type,
         title: body.title,
-        description: body.description
+        description: body.description,
+        isBuffered: body.isBuffered
       }
     })
     
