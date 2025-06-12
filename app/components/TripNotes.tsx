@@ -30,16 +30,16 @@ function Editor() {
     // Create Yjs document
     const yDoc = new Y.Doc();
     const yProvider = new LiveblocksYjsProvider(room, yDoc);
-    
+
     // Listen for sync
     const syncHandler = (isSynced: boolean) => {
       console.log('Sync status:', isSynced);
       setSynced(isSynced);
     };
     yProvider.on('sync', syncHandler);
-    
+
     setProvider(yProvider);
-    
+
     // Create editor with collaboration
     const editor = BlockNoteEditor.create({
       collaboration: {
@@ -47,13 +47,13 @@ function Editor() {
         fragment: yDoc.getXmlFragment('document'),
         user: {
           name: 'User',
-          color: '#' + Math.floor(Math.random()*16777215).toString(16),
+          color: '#' + Math.floor(Math.random() * 16777215).toString(16),
         },
       },
     });
-    
+
     setEditor(editor);
-    
+
     return () => {
       yProvider.off('sync', syncHandler);
       yProvider.destroy();
@@ -103,7 +103,7 @@ export default function TripNotesDialog({ open, onOpenChange }: TripNotesDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] max-h-[600px] flex flex-col">
+      <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Trip Notes</DialogTitle>
           <Button
