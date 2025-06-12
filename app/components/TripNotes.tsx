@@ -1,124 +1,112 @@
 'use client';
 
-import React, { Suspense, useEffect, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BlockNoteView } from '@blocknote/mantine';
-import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteEditor } from '@blocknote/core';
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/mantine/style.css';
-import { LiveblocksProvider, RoomProvider, useRoom, useStorage, useMutation } from '@liveblocks/react/suspense';
+import { LiveblocksProvider, RoomProvider, useRoom } from '@liveblocks/react/suspense';
+import { LiveblocksYjsProvider } from '@liveblocks/yjs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2, Users, X } from 'lucide-react';
+import * as Y from 'yjs';
 
 const LIVEBLOCKS_PUBLIC_KEY = process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY!;
+const ROOM_ID = 'china-trip-notes-2025'; // Fixed room ID
 
 interface TripNotesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-function CollaborativeEditor() {
+function Editor() {
   const room = useRoom();
-  const savedContent = useStorage((root) => root.editorContent);
+  const [editor, setEditor] = useState<BlockNoteEditor | null>(null);
+  const [provider, setProvider] = useState<LiveblocksYjsProvider | null>(null);
+  const [synced, setSynced] = useState(false);
 
-  const updateContent = useMutation(({ storage }, content) => {
-    storage.set('editorContent', content);
-  }, []);
-
-  // Debounce function
-  const debounce = (func: Function, wait: number) => {
-    let timeout: NodeJS.Timeout;
-    return (...args: any[]) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  };
-
-  // Create debounced save function
-  const debouncedSave = useCallback(
-    debounce((blocks: any) => {
-      updateContent(blocks);
-    }, 1000),
-    [updateContent]
-  );
-
-  const editor = useCreateBlockNote({
-    initialContent: savedContent || [
-      {
-        type: 'heading',
-        content: 'China Trip Notes 2025',
-        props: { level: 1 }
-      },
-      {
-        type: 'paragraph',
-        content: 'Start writing your collaborative trip notes here...'
-      }
-    ],
-  });
-
-  // Save content when it changes
   useEffect(() => {
-    if (!editor) return;
-
-    const handleChange = () => {
-      const blocks = editor.document;
-      debouncedSave(blocks);
+    // Create Yjs document
+    const yDoc = new Y.Doc();
+    const yProvider = new LiveblocksYjsProvider(room, yDoc);
+    
+    // Listen for sync
+    const syncHandler = (isSynced: boolean) => {
+      console.log('Sync status:', isSynced);
+      setSynced(isSynced);
     };
+    yProvider.on('sync', syncHandler);
+    
+    setProvider(yProvider);
+    
+    // Create editor with collaboration
+    const editor = BlockNoteEditor.create({
+      collaboration: {
+        provider: yProvider,
+        fragment: yDoc.getXmlFragment('document'),
+        user: {
+          name: 'User',
+          color: '#' + Math.floor(Math.random()*16777215).toString(16),
+        },
+      },
+    });
+    
+    setEditor(editor);
+    
+    return () => {
+      yProvider.off('sync', syncHandler);
+      yProvider.destroy();
+      yDoc.destroy();
+    };
+  }, [room]);
 
-    editor.onEditorContentChange(handleChange);
-  }, [editor, debouncedSave]);
-
-  if (!editor) {
+  if (!editor || !provider) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-96">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="w-full">
-      <BlockNoteView
-        editor={editor}
-        theme="light"
-      />
-    </div>
+    <>
+      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+        <Users className="h-4 w-4" />
+        <span>Real-time collaboration</span>
+        <div className={`ml-auto flex items-center gap-2`}>
+          <div className={`w-2 h-2 rounded-full ${synced ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
+          <span className="text-xs">{synced ? 'Connected' : 'Syncing...'}</span>
+        </div>
+      </div>
+      <BlockNoteView editor={editor} theme="light" />
+    </>
   );
 }
 
 function TripNotesContent() {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <Users className="h-4 w-4" />
-        <span>Notes are automatically saved</span>
-      </div>
-      <CollaborativeEditor />
-    </div>
-  );
-}
-
-function TripNotesRoom() {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center h-64">
+    <React.Suspense fallback={
+      <div className="flex items-center justify-center h-96">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     }>
-      <TripNotesContent />
-    </Suspense>
+      <Editor />
+    </React.Suspense>
   );
 }
 
 export default function TripNotesDialog({ open, onOpenChange }: TripNotesDialogProps) {
+  if (!open) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] h-[600px] flex flex-col">
         <DialogHeader>
           <DialogTitle>Trip Notes</DialogTitle>
           <Button
             onClick={() => onOpenChange(false)}
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             variant="ghost"
             size="icon"
           >
@@ -126,26 +114,10 @@ export default function TripNotesDialog({ open, onOpenChange }: TripNotesDialogP
             <span className="sr-only">Close</span>
           </Button>
         </DialogHeader>
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           <LiveblocksProvider publicApiKey={LIVEBLOCKS_PUBLIC_KEY}>
-            <RoomProvider
-              id="china-trip-2025-notes"
-              initialPresence={{}}
-              initialStorage={{
-                editorContent: [
-                  {
-                    type: 'heading',
-                    content: 'China Trip Notes 2025',
-                    props: { level: 1 }
-                  },
-                  {
-                    type: 'paragraph',
-                    content: 'Start writing your collaborative trip notes here...'
-                  }
-                ]
-              }}
-            >
-              <TripNotesRoom />
+            <RoomProvider id={ROOM_ID} initialPresence={{}}>
+              <TripNotesContent />
             </RoomProvider>
           </LiveblocksProvider>
         </div>
