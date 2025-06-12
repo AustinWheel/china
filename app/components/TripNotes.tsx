@@ -79,7 +79,9 @@ function Editor() {
           <span className="text-xs">{synced ? 'Connected' : 'Syncing...'}</span>
         </div>
       </div>
-      <BlockNoteView editor={editor} theme="light" />
+      <div className="min-h-[400px]">
+        <BlockNoteView editor={editor} theme="light" />
+      </div>
     </>
   );
 }
@@ -101,8 +103,8 @@ export default function TripNotesDialog({ open, onOpenChange }: TripNotesDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] h-[600px] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl h-[80vh] max-h-[600px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Trip Notes</DialogTitle>
           <Button
             onClick={() => onOpenChange(false)}
@@ -114,7 +116,7 @@ export default function TripNotesDialog({ open, onOpenChange }: TripNotesDialogP
             <span className="sr-only">Close</span>
           </Button>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-[400px]">
           <LiveblocksProvider publicApiKey={LIVEBLOCKS_PUBLIC_KEY}>
             <RoomProvider id={ROOM_ID} initialPresence={{}}>
               <TripNotesContent />
