@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import ImprovedCalendar from './components/ImprovedCalendar';
+import ThreeDayView from './components/ThreeDayView';
+import OneDayView from './components/OneDayView';
 import EventBuffer from './components/EventBuffer';
 import TripNotesDialog from './components/TripNotes';
 import { Event, EventType } from './types';
@@ -12,12 +14,13 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
-import { Plus, Calendar, MapPin, Clock, Trash2, Loader2, Archive, CalendarPlus, FileText } from 'lucide-react';
+import { Plus, Calendar, MapPin, Clock, Trash2, Loader2, Archive, CalendarPlus, FileText, CalendarDays, CalendarRange, CalendarCheck } from 'lucide-react';
 
 export default function Home() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showTripNotes, setShowTripNotes] = useState(false);
+  const [viewMode, setViewMode] = useState<'full' | 'threeDay' | 'oneDay'>('full');
   
   const { data: events = [], isLoading, error } = useEvents();
   const createEventMutation = useCreateEvent();
@@ -95,6 +98,32 @@ export default function Home() {
             </div>
             <div className="flex gap-3">
               <Button
+                onClick={() => {
+                  if (viewMode === 'full') setViewMode('threeDay');
+                  else if (viewMode === 'threeDay') setViewMode('oneDay');
+                  else setViewMode('full');
+                }}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                {viewMode === 'full' ? (
+                  <>
+                    <CalendarDays className="h-4 w-4" />
+                    3-Day View
+                  </>
+                ) : viewMode === 'threeDay' ? (
+                  <>
+                    <CalendarCheck className="h-4 w-4" />
+                    1-Day View
+                  </>
+                ) : (
+                  <>
+                    <CalendarRange className="h-4 w-4" />
+                    Full Calendar
+                  </>
+                )}
+              </Button>
+              <Button
                 onClick={() => setShowTripNotes(true)}
                 variant="outline"
                 className="flex items-center gap-2"
@@ -104,11 +133,10 @@ export default function Home() {
               </Button>
               <Button
                 onClick={() => setShowAddEvent(true)}
-                className="flex items-center gap-2"
+                size="icon"
                 disabled={createEventMutation.isPending}
               >
                 <Plus className="h-4 w-4" />
-                Add Event
               </Button>
             </div>
           </div>
@@ -131,31 +159,27 @@ export default function Home() {
             </div>
             <div className="flex flex-col h-full min-h-0 min-w-0">
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-                <ImprovedCalendar 
-                  events={events}
-                  onEventClick={setSelectedEvent}
-                  onEventDrop={handleEventDrop}
-                />
+                {viewMode === 'full' ? (
+                  <ImprovedCalendar 
+                    events={events}
+                    onEventClick={setSelectedEvent}
+                    onEventDrop={handleEventDrop}
+                  />
+                ) : viewMode === 'threeDay' ? (
+                  <ThreeDayView
+                    events={events}
+                    onEventClick={setSelectedEvent}
+                    onEventDrop={handleEventDrop}
+                  />
+                ) : (
+                  <OneDayView
+                    events={events}
+                    onEventClick={setSelectedEvent}
+                    onEventDrop={handleEventDrop}
+                  />
+                )}
               </div>
               
-              {/* Event count summary */}
-              <div className="flex gap-4 justify-center flex-wrap pt-4 pb-2 flex-shrink-0">
-                <Badge variant="outline" className="px-3 py-1">
-                  📋 Unscheduled: {events.filter(e => e.isBuffered).length}
-                </Badge>
-                <Badge variant="outline" className="px-3 py-1">
-                  🍜 Food: {events.filter(e => e.type === 'food' && !e.isBuffered).length}
-                </Badge>
-                <Badge variant="outline" className="px-3 py-1">
-                  🎯 Activities: {events.filter(e => e.type === 'activity' && !e.isBuffered).length}
-                </Badge>
-                <Badge variant="outline" className="px-3 py-1">
-                  ✈️ Transport: {events.filter(e => e.type === 'transport' && !e.isBuffered).length}
-                </Badge>
-                <Badge variant="outline" className="px-3 py-1">
-                  🏨 Accommodation: {events.filter(e => e.type === 'accommodation' && !e.isBuffered).length}
-                </Badge>
-              </div>
             </div>
           </div>
         )}

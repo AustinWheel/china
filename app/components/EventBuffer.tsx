@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Event, EventType } from '../types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, GripVertical } from 'lucide-react';
+import { Clock, GripVertical, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatTime } from '../utils';
 
@@ -14,6 +15,13 @@ interface EventBufferProps {
 }
 
 export default function EventBuffer({ events, onEventClick, onEventDropBack }: EventBufferProps) {
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Check if mobile (window width < 768px)
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
   const bufferedEvents = events.filter(e => e.isBuffered);
 
   const getEventTypeIcon = (type: EventType) => {
@@ -38,10 +46,16 @@ export default function EventBuffer({ events, onEventClick, onEventDropBack }: E
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold">Unscheduled Events</CardTitle>
+      <CardHeader className="cursor-pointer md:cursor-default" onClick={() => setIsCollapsed(!isCollapsed)}>
+        <CardTitle className="text-lg font-semibold flex items-center justify-between">
+          Unscheduled Events
+          <button className="md:hidden p-1">
+            {isCollapsed ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
+          </button>
+        </CardTitle>
       </CardHeader>
-      <CardContent 
+      {!isCollapsed && (
+        <CardContent 
         className="space-y-2 min-h-[100px]"
         onDragOver={(e) => {
           e.preventDefault();
@@ -94,6 +108,7 @@ export default function EventBuffer({ events, onEventClick, onEventDropBack }: E
           ))
         )}
       </CardContent>
+      )}
     </Card>
   );
 }
